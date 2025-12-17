@@ -1,10 +1,16 @@
-// تهيئة التطبيق
-document.addEventListener('DOMContentLoaded', () => {
-    initApp();
-    registerServiceWorker();
-});
+// تهيئة التطبيق - إصدار مصحح
+let isInitialized = false; // لمنع التهيئة المزدوجة
 
 function initApp() {
+    // إذا تم التهيئة بالفعل، لا تفعل شيء
+    if (isInitialized) {
+        console.warn('⚠️ التطبيق مهيأ بالفعل!');
+        return;
+    }
+    
+    isInitialized = true;
+    console.log('🚀 تهيئة التطبيق...');
+
     const addTaskBtn = document.getElementById('addTask');
     const taskModal = document.getElementById('taskModal');
     const cancelBtn = document.getElementById('cancelBtn');
@@ -18,81 +24,40 @@ function initApp() {
     // تحميل وعرض المهام
     renderAllTasks();
 
-    // أحداث الأزرار
-    addTaskBtn.addEventListener('click', () => {
-        editingTaskId = null;
-        document.getElementById('modalTitle').textContent = 'مهمة جديدة';
-        taskForm.reset();
-        taskModal.classList.add('active');
-    });
+    // إزالة جميع المستمعين الحاليين أولاً (للتأكد)
+    const newAddBtn = addTaskBtn.cloneNode(true);
+    addTaskBtn.parentNode.replaceChild(newAddBtn, addTaskBtn);
+    
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    
+    const newForm = taskForm.cloneNode(true);
+    taskForm.parentNode.replaceChild(newForm, taskForm);
 
-    cancelBtn.addEventListener('click', () => {
+    // إعادة تعيين المرجع بعد الاستبدال
+    const freshAddTaskBtn = document.getElementById('addTask');
+    const freshCancelBtn = document.getElementById('cancelBtn');
+    const freshTaskForm = document.getElementById('taskForm');
+
+    // أحداث الأزرار - مع العلم أنها جديدة
+    freshAddTaskBtn.addEventListener('click', handleAddTask, { once: false });
+
+    freshCancelBtn.addEventListener('click', () => {
         taskModal.classList.remove('active');
     });
 
     // عند إرسال النموذج
-    taskForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        const task = {
-            title: document.getElementById('taskTitle').value,
-            description: document.getElementById('taskDescription').value,
-            importance: document.getElementById('taskImportance').value,
-            urgency: document.getElementById('taskUrgency').value,
-            quadrant: getQuadrant(
-                document.getElementById('taskImportance').value,
-                document.getElementById('taskUrgency').value
-            )
-        };
-
-        if (editingTaskId) {
-            taskDB.updateTask(editingTaskId, task);
-        } else {
-            taskDB.addTask(task);
-        }
-
-        taskModal.classList.remove('active');
-        renderAllTasks();
-    });
+    freshTaskForm.addEventListener('submit', handleSubmitTask);
 
     // تصدير البيانات
-    exportBtn.addEventListener('click', () => {
-        const data = taskDB.exportData();
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `eisenhower-tasks-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        alert('تم تصدير البيانات بنجاح!');
-    });
-
+    exportBtn.addEventListener('click', handleExport);
+    
     // استيراد البيانات
     importBtn.addEventListener('click', () => {
         importFile.click();
     });
 
-    importFile.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const success = taskDB.importData(event.target.result);
-            if (success) {
-                renderAllTasks();
-                alert('تم استيراد البيانات بنجاح!');
-            } else {
-                alert('خطأ في استيراد البيانات. تأكد من صحة الملف.');
-            }
-            importFile.value = ''; // إعادة تعيين حقل الملف
-        };
-        reader.readAsText(file);
-    });
+    importFile.addEventListener('change', handleImport);
 
     // إغلاق النافذة عند النقر خارجها
     taskModal.addEventListener('click', (e) => {
@@ -102,7 +67,81 @@ function initApp() {
     });
 }
 
-// تحديد الربع بناءً على الأهمية والإلحاح
+// ===== دوال المعالجة المنفصلة =====
+
+function handleAddTask() {
+    console.log('✅ حدث إضافة مهمة (مرة واحدة)');
+    editingTaskId = null;
+    document.getElementById('modalTitle').textContent = 'مهمة جديدة';
+    document.getElementById('taskForm').reset();
+    document.getElementById('taskModal').classList.add('active');
+}
+
+function handleSubmitTask(e) {
+    e.preventDefault();
+    console.log('✅ إرسال النموذج (مرة واحدة)');
+
+    const task = {
+        title: document.getElementById('taskTitle').value,
+        description: document.getElementById('taskDescription').value,
+        importance: document.getElementById('taskImportance').value,
+        urgency: document.getElementById('taskUrgency').value,
+        quadrant: getQuadrant(
+            document.getElementById('taskImportance').value,
+            document.getElementById('taskUrgency').value
+        )
+    };
+
+    console.log('📝 المهمة المضافة:', task);
+
+    if (editingTaskId) {
+        taskDB.updateTask(editingTaskId, task);
+        console.log('✏️ تم تحديث المهمة:', editingTaskId);
+    } else {
+        const taskId = taskDB.addTask(task);
+        console.log('➕ تمت إضافة مهمة جديدة، ID:', taskId);
+    }
+
+    document.getElementById('taskModal').classList.remove('active');
+    renderAllTasks();
+}
+
+function handleExport() {
+    console.log('📤 تصدير البيانات...');
+    const data = taskDB.exportData();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `eisenhower-tasks-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    alert('تم تصدير البيانات بنجاح!');
+}
+
+function handleImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const success = taskDB.importData(event.target.result);
+        if (success) {
+            renderAllTasks();
+            alert('تم استيراد البيانات بنجاح!');
+        } else {
+            alert('خطأ في استيراد البيانات. تأكد من صحة الملف.');
+        }
+        e.target.value = '';
+    };
+    reader.readAsText(file);
+}
+
+// ===== الدوال المساعدة =====
+
 function getQuadrant(importance, urgency) {
     if (importance === 'important' && urgency === 'urgent') {
         return 'urgent-important';
@@ -115,8 +154,8 @@ function getQuadrant(importance, urgency) {
     }
 }
 
-// عرض جميع المهام
 function renderAllTasks() {
+    console.log('🔄 عرض المهام...');
     const quadrants = [
         'urgent-important',
         'important-not-urgent',
@@ -126,6 +165,8 @@ function renderAllTasks() {
 
     quadrants.forEach(quadrant => {
         const container = document.querySelector(`.tasks[data-quadrant="${quadrant}"]`);
+        if (!container) return;
+        
         container.innerHTML = '';
         
         const tasks = taskDB.getTasksByQuadrant(quadrant);
@@ -142,7 +183,6 @@ function renderAllTasks() {
     });
 }
 
-// إنشاء عنصر مهمة
 function createTaskElement(task) {
     const div = document.createElement('div');
     div.className = `task-item ${task.quadrant}`;
@@ -186,7 +226,6 @@ function createTaskElement(task) {
     return div;
 }
 
-// تعديل مهمة
 function editTask(id) {
     const task = taskDB.getTaskById(id);
     if (!task) return;
@@ -202,83 +241,67 @@ function editTask(id) {
     document.getElementById('taskModal').classList.add('active');
 }
 
-// تسجيل Service Worker
-// ... باقي الكود
+// ===== Service Worker =====
 
-// ... باقي الكود
-
-// تسجيل Service Worker لـ GitHub Pages
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        const swUrl = '/eisenhower-matrix-pwa/sw.js';
+        console.log('🔧 تسجيل Service Worker...');
         
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register(swUrl)
+        // أولا، قم بإلغاء التسجيل القديم
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (let registration of registrations) {
+                registration.unregister();
+                console.log('🗑️ إلغاء تسجيل Service Worker:', registration.scope);
+            }
+            
+            // بعد إزالة القديم، سجل الجديد
+            const swUrl = '/eisenhower-matrix-pwa/sw.js';
+            
+            navigator.serviceWorker.register(swUrl, { scope: '/eisenhower-matrix-pwa/' })
                 .then(registration => {
-                    console.log('ServiceWorker مسجل بنجاح مع النطاق:', registration.scope);
+                    console.log('✅ ServiceWorker مسجل بنجاح:', registration.scope);
                     
-                    // التحقق من التحديثات
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        console.log('ServiceWorker update found!');
-                        
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed') {
-                                if (navigator.serviceWorker.controller) {
-                                    // هناك تحديث متاح
-                                    console.log('New content is available; please refresh.');
-                                    showUpdateNotification();
-                                } else {
-                                    // المحتوى مخزن للاستخدام دون اتصال
-                                    console.log('Content is cached for offline use.');
-                                }
-                            }
-                        });
-                    });
+                    // إرسال رسالة لإعادة التحميل إذا لزم الأمر
+                    if (registration.waiting) {
+                        registration.waiting.postMessage({ action: 'skipWaiting' });
+                    }
                 })
                 .catch(error => {
-                    console.error('Error during service worker registration:', error);
+                    console.error('❌ خطأ في تسجيل Service Worker:', error);
                 });
         });
-        
-        // تحديث Service Worker كل ساعة
-        setInterval(() => {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.update();
-            });
-        }, 60 * 60 * 1000); // كل ساعة
     }
 }
 
-// عرض إشعار التحديث
-function showUpdateNotification() {
-    if (confirm('توجد نسخة جديدة من التطبيق. هل تريد تحديث الصفحة الآن؟')) {
-        window.location.reload();
-    }
-}
+// ===== التهيئة الرئيسية =====
 
-// عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
-    initApp();
-    registerServiceWorker();
+// استخدم كائن window للتحقق من التحميل
+window.appState = {
+    initialized: false,
+    tasksCount: 0
+};
+
+// تهيئة واحدة فقط عند تحميل DOM
+document.addEventListener('DOMContentLoaded', function mainInitialization() {
+    console.log('📄 DOM جاهز، بدء التهيئة...');
     
-    // التحقق من التثبيت
-    checkInstallation();
-});
-
-// التحقق مما إذا تم تثبيت التطبيق
-function checkInstallation() {
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('التطبيق مثبت كـ PWA');
-        // يمكنك إضافة ميزات خاصة بالتطبيق المثبت هنا
-    }
-}
-
-// باقي الكود كما هو...
-
-// استدعاء التسجيل عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
+    // إزالة هذا المستمع لمنع التهيئة المزدوجة
+    document.removeEventListener('DOMContentLoaded', mainInitialization);
+    
+    // تهيئة التطبيق
     initApp();
-    registerServiceWorker();
+    
+    // تسجيل Service Worker بعد تأخير بسيط
+    setTimeout(() => {
+        registerServiceWorker();
+    }, 1000);
+    
+    // تسجيل عدد المهام الحالي
+    window.appState.tasksCount = taskDB.getAllTasks().length;
+    console.log(`📊 عدد المهام الحالي: ${window.appState.tasksCount}`);
 });
 
+// أيضًا نستمع لحدث load لضمان التحميل الكامل
+window.addEventListener('load', () => {
+    console.log('🎯 الصفحة محملة بالكامل');
+});
