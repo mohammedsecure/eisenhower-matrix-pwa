@@ -1,0 +1,38 @@
+{
+    "name": "مصفوفة أيزنهاور للمهام",
+    "short_name": "مصفوفة المهام",
+    "description": "تطبيق لإدارة المهام باستخدام مصفوفة أيزنهاور",
+    "start_url": "https://mohammedsecure.github.io/eisenhower-matrix-pwa/",
+    "scope": "https://mohammedsecure.github.io/eisenhower-matrix-pwa/",
+    "display": "standalone",
+    "background_color": "#4f46e5",
+    "theme_color": "#4f46e5",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "https://mohammedsecure.github.io/eisenhower-matrix-pwa/icons/icon-72x72.png",
+            "sizes": "72x72",
+            "type": "image/png"
+        },
+        {
+            "src": "https://mohammedsecure.github.io/eisenhower-matrix-pwa/icons/icon-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png"
+        },
+        {
+            "src": "https://mohammedsecure.github.io/eisenhower-matrix-pwa/icons/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png"
+        },
+        {
+            "src": "https://mohammedsecure.github.io/eisenhower-matrix-pwa/icons/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png"
+        },
+        {
+            "src": "https://mohammedsecure.github.io/eisenhower-matrix-pwa/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
