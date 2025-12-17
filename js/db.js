@@ -97,4 +97,45 @@ class TaskDB {
 }
 
 // إنشاء نسخة عامة من قاعدة البيانات
+
 const taskDB = new TaskDB();
+
+// في نهاية db.js، أضف هذا الكود للتحقق
+console.log('📁 TaskDB مهيأ');
+console.log('عدد المهام الحالية:', taskDB.getAllTasks().length);
+
+// إضافة دالة للتحقق من التكرار
+taskDB.checkForDuplicates = function() {
+    const tasks = this.getAllTasks();
+    const seen = new Set();
+    const duplicates = [];
+    
+    tasks.forEach(task => {
+        const key = task.title + task.description + task.quadrant;
+        if (seen.has(key)) {
+            duplicates.push(task);
+        } else {
+            seen.add(key);
+        }
+    });
+    
+    if (duplicates.length > 0) {
+        console.warn(`⚠️ يوجد ${duplicates.length} مهمة مكررة`);
+        // حذف المكررات
+        const uniqueTasks = tasks.filter((task, index, self) => 
+            index === self.findIndex(t => 
+                t.title === task.title && 
+                t.description === task.description && 
+                t.quadrant === task.quadrant
+            )
+        );
+        this.tasks = uniqueTasks;
+        this.saveTasks();
+        console.log(`✅ تم إزالة المكررات، بقي ${uniqueTasks.length} مهمة`);
+    }
+};
+
+// تشغيل التحقق تلقائياً
+setTimeout(() => {
+    taskDB.checkForDuplicates();
+}, 2000);
